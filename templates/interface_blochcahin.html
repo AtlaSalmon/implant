@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ImplantManager Interface</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0c0f;
+    --surface: #111418;
+    --surface2: #181c22;
+    --border: #232830;
+    --accent: #00e5a0;
+    --accent2: #0066ff;
+    --warn: #ff6b35;
+    --text: #e8edf2;
+    --muted: #5a6475;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 220px 1fr 300px;
+    grid-template-rows: 60px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Header */
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,15,0.9);
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.4); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px rgba(0,229,160,0); }
+  }
+
+  #connect-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 7px 16px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+
+  #connect-btn:hover { background: rgba(0,229,160,0.08); }
+  #connect-btn.connected { border-color: var(--muted); color: var(--muted); font-size: 10px; }
+
+  /* Sidebar */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .sidebar-section {
+    margin-bottom: 8px;
+  }
+
+  .sidebar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 0 16px 8px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    color: var(--muted);
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+
+  .nav-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,229,160,0.05);
+  }
+
+  .nav-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* Main content */
+  main {
+    overflow-y: auto;
+    padding: 28px;
+    background: var(--bg);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .form-card h3 {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 14px;
+    font-weight: 500;
+  }
+
+  .form-group { margin-bottom: 12px; }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+  }
+
+  input, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 70px; }
+
+  button.action-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 9px 20px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+
+  button.primary {
+    background: var(--accent);
+    color: #000;
+  }
+
+  button.primary:hover { background: #00ffb3; }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  button.secondary:hover { border-color: var(--text); color: var(--text); }
+
+  button.warn-btn {
+    background: transparent;
+    border: 1px solid var(--warn);
+    color: var(--warn);
+  }
+
+  button.warn-btn:hover { background: rgba(255,107,53,0.08); }
+
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Right panel — log */
+  .log-panel {
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .log-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .clear-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .clear-btn:hover { color: var(--text); }
+
+  #log-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .log-entry {
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 8px 10px;
+    border-left: 2px solid;
+    background: rgba(255,255,255,0.02);
+    word-break: break-all;
+  }
+
+  .log-entry.info { border-color: var(--accent2); color: #7aacff; }
+  .log-entry.success { border-color: var(--accent); color: var(--accent); }
+  .log-entry.error { border-color: var(--warn); color: #ff9070; }
+  .log-entry.pending { border-color: #888; color: var(--muted); }
+
+  .log-time {
+    font-size: 9px;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* Result display */
+  .result-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 14px;
+    margin-top: 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    display: none;
+  }
+
+  .result-box.visible { display: block; }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .result-row:last-child { border-bottom: none; }
+  .result-key { color: var(--muted); flex-shrink: 0; }
+  .result-val { color: var(--accent); text-align: right; word-break: break-all; }
+
+  /* History table */
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 14px;
+    display: none;
+  }
+
+  .history-table.visible { display: table; }
+
+  .history-table th {
+    text-align: left;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .history-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+    vertical-align: top;
+  }
+
+  .history-table tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    padding: 2px 7px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge.registered { background: rgba(0,102,255,0.15); color: #7aacff; }
+  .badge.transferred { background: rgba(0,229,160,0.12); color: var(--accent); }
+  .badge.assigned { background: rgba(255,107,53,0.12); color: #ff9070; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">IMPLANT_MANAGER.SOL</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--muted)" id="network-info"></div>
+    <button id="connect-btn" onclick="connectWallet()">CONNECT WALLET</button>
+  </header>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Admin</div>
+      <div class="nav-item active" onclick="showPanel('p-add-agent')">
+        <span class="nav-dot"></span> Add Agent
+      </div>
+      <div class="nav-item" onclick="showPanel('p-add-dentist')">
+        <span class="nav-dot"></span> Add Dentist
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Agent</div>
+      <div class="nav-item" onclick="showPanel('p-register')">
+        <span class="nav-dot"></span> Register Implant
+      </div>
+      <div class="nav-item" onclick="showPanel('p-transfer')">
+        <span class="nav-dot"></span> Transfer to Dentist
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Dentist</div>
+      <div class="nav-item" onclick="showPanel('p-assign')">
+        <span class="nav-dot"></span> Assign to Patient
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Read</div>
+      <div class="nav-item" onclick="showPanel('p-specs')">
+        <span class="nav-dot"></span> Get Implant Specs
+      </div>
+      <div class="nav-item" onclick="showPanel('p-history')">
+        <span class="nav-dot"></span> Get History
+      </div>
+      <div class="nav-item" onclick="showPanel('p-counter')">
+        <span class="nav-dot"></span> Implant Counter
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Add Agent -->
+    <div class="panel active" id="p-add-agent">
+      <div class="panel-title">Admin — Add Agent</div>
+      <div class="form-card">
+        <h3>addAgent()</h3>
+        <div class="form-group">
+          <label>Agent Address</label>
+          <input id="agent-addr" type="text" placeholder="0x..."/>
+        </div>
+        <button class="action-btn primary" onclick="addAgent()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- Add Dentist -->
+    <div class="panel" id="p-add-dentist">
+      <div class="panel-title">Admin — Add Dentist</div>
+      <div class="form-card">
+        <h3>addDentist()</h3>
+        <div class="form-group">
+          <label>Dentist Address</label>
+          <input id="dentist-addr" type="text" placeholder="0x..."/>
+        </div>
+        <button class="action-btn primary" onclick="addDentist()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- Register Implant -->
+    <div class="panel" id="p-register">
+      <div class="panel-title">Agent — Register Implant</div>
+      <div class="form-card">
+        <h3>registerImplant()</h3>
+        <div class="form-group">
+          <label>Specifications</label>
+          <textarea id="impl-specs" placeholder="e.g. Brand: Straumann, Size: 4.1x10mm, Material: Titanium"></textarea>
+        </div>
+        <button class="action-btn primary" onclick="registerImplant()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- Transfer -->
+    <div class="panel" id="p-transfer">
+      <div class="panel-title">Agent — Transfer to Dentist</div>
+      <div class="form-card">
+        <h3>transferToDentist()</h3>
+        <div class="form-group">
+          <label>Implant ID</label>
+          <input id="transfer-id" type="number" placeholder="1" min="1"/>
+        </div>
+        <div class="form-group">
+          <label>Dentist Address</label>
+          <input id="transfer-dentist" type="text" placeholder="0x..."/>
+        </div>
+        <button class="action-btn primary" onclick="transferToDentist()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- Assign -->
+    <div class="panel" id="p-assign">
+      <div class="panel-title">Dentist — Assign to Patient</div>
+      <div class="form-card">
+        <h3>assignToPatient()</h3>
+        <div class="form-group">
+          <label>Implant ID</label>
+          <input id="assign-id" type="number" placeholder="1" min="1"/>
+        </div>
+        <div class="form-group">
+          <label>Patient Address</label>
+          <input id="assign-patient" type="text" placeholder="0x..."/>
+        </div>
+        <button class="action-btn warn-btn" onclick="assignToPatient()">EXECUTE</button>
+      </div>
+    </div>
+
+    <!-- Get Specs -->
+    <div class="panel" id="p-specs">
+      <div class="panel-title">Read — Implant Specs</div>
+      <div class="form-card">
+        <h3>getImplantSpecs()</h3>
+        <div class="form-group">
+          <label>Implant ID</label>
+          <input id="specs-id" type="number" placeholder="1" min="1"/>
+        </div>
+        <button class="action-btn secondary" onclick="getSpecs()">QUERY</button>
+        <div class="result-box" id="specs-result">
+          <div class="result-row"><span class="result-key">Specs</span><span class="result-val" id="r-specs"></span></div>
+          <div class="result-row"><span class="result-key">Current Owner</span><span class="result-val" id="r-owner"></span></div>
+          <div class="result-row"><span class="result-key">Used</span><span class="result-val" id="r-used"></span></div>
+          <div class="result-row"><span class="result-key">Patient</span><span class="result-val" id="r-patient"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="panel" id="p-history">
+      <div class="panel-title">Read — Implant History</div>
+      <div class="form-card">
+        <h3>getImplantHistory()</h3>
+        <div class="form-group">
+          <label>Implant ID</label>
+          <input id="hist-id" type="number" placeholder="1" min="1"/>
+        </div>
+        <button class="action-btn secondary" onclick="getHistory()">QUERY</button>
+        <table class="history-table" id="history-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Action</th>
+              <th>Owner</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Counter -->
+    <div class="panel" id="p-counter">
+      <div class="panel-title">Read — Total Implants</div>
+      <div class="form-card">
+        <h3>implantCounter()</h3>
+        <button class="action-btn secondary" onclick="getCounter()">QUERY</button>
+        <div class="result-box" id="counter-result">
+          <div class="result-row">
+            <span class="result-key">Total registered implants</span>
+            <span class="result-val" id="r-counter"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Log Panel -->
+  <aside class="log-panel">
+    <div class="log-header">
+      <span>TRANSACTION LOG</span>
+      <button class="clear-btn" onclick="clearLog()">CLEAR</button>
+    </div>
+    <div id="log-entries">
+      <div class="empty-state">No activity yet.</div>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// PASTE YOUR DEPLOYED CONTRACT ADDRESS HERE:
+const CONTRACT_ADDRESS = "0x724c3cF5c2594A9CEC57176D0fD64B4790B15596";
+
+const ABI = [
+  "function addAgent(address _agent) external",
+  "function addDentist(address _dentist) external",
+  "function registerImplant(string memory _specs) external returns (uint256)",
+  "function transferToDentist(uint256 _implantId, address _dentist) external",
+  "function assignToPatient(uint256 _implantId, address _patient) external",
+  "function getImplantSpecs(uint256 _implantId) external view returns (string memory, address, bool, address)",
+  "function getImplantHistory(uint256 _implantId) external view returns (tuple(address owner, uint256 timestamp, string action)[])",
+  "function implantCounter() external view returns (uint256)"
+];
+// ──────────────────────────────────────────────────────────────────────────────
+
+let provider, signer, contract;
+
+// Navigation
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// Logging
+function log(msg, type = 'info') {
+  const box = document.getElementById('log-entries');
+  const empty = box.querySelector('.empty-state');
+  if (empty) empty.remove();
+  const el = document.createElement('div');
+  el.className = `log-entry ${type}`;
+  const t = new Date().toLocaleTimeString();
+  el.innerHTML = `<span class="log-time">${t}</span>${msg}`;
+  box.prepend(el);
+}
+
+function clearLog() {
+  document.getElementById('log-entries').innerHTML = '<div class="empty-state">Cleared.</div>';
+}
+
+// Wallet
+async function connectWallet() {
+  const btn = document.getElementById('connect-btn');
+  if (btn.classList.contains('connected')) {
+    return disconnectWallet();
+  }
+
+  if (!window.ethereum) { log('MetaMask not found.', 'error'); return; }
+  try {
+    await window.ethereum.request({
+      method: "wallet_requestPermissions",
+      params: [{ eth_accounts: {} }]
+    });
+
+    provider = new ethers.BrowserProvider(window.ethereum);
+    signer = await provider.getSigner();
+    contract = new ethers.Contract(CONTRACT_ADDRESS, ABI, signer);
+    const addr = await signer.getAddress();
+    const net = await provider.getNetwork();
+
+    btn.textContent = addr.slice(0,6) + '...' + addr.slice(-4);
+    btn.classList.add('connected');
+    document.getElementById('network-info').textContent = net.name.toUpperCase();
+    log(`Connected: ${addr}`, 'success');
+  } catch(e) { log(e.reason || e.message || e.message, 'error'); }
+}
+
+function disconnectWallet() {
+  provider = null;
+  signer = null;
+  contract = null;
+  const btn = document.getElementById('connect-btn');
+  btn.textContent = 'CONNECT WALLET';
+  btn.classList.remove('connected');
+  document.getElementById('network-info').textContent = '';
+  log('Disconnected wallet.', 'info');
+}
+
+// Contract calls
+async function addAgent() {
+  const addr = document.getElementById('agent-addr').value.trim();
+  if (!addr) { log('Enter agent address.', 'error'); return; }
+  try {
+    log(`addAgent(${addr}) — pending...`, 'pending');
+    const tx = await contract.addAgent(addr);
+    log(`Tx sent: ${tx.hash}`, 'info');
+    await tx.wait();
+    log(`Agent added: ${addr}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function addDentist() {
+  const addr = document.getElementById('dentist-addr').value.trim();
+  if (!addr) { log('Enter dentist address.', 'error'); return; }
+  try {
+    log(`addDentist(${addr}) — pending...`, 'pending');
+    const tx = await contract.addDentist(addr);
+    log(`Tx sent: ${tx.hash}`, 'info');
+    await tx.wait();
+    log(`Dentist added: ${addr}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function registerImplant() {
+  const specs = document.getElementById('impl-specs').value.trim();
+  if (!specs) { log('Enter implant specs.', 'error'); return; }
+  try {
+    log(`registerImplant() — pending...`, 'pending');
+    const tx = await contract.registerImplant(specs);
+    log(`Tx sent: ${tx.hash}`, 'info');
+    const receipt = await tx.wait();
+    log(`Implant registered. Check counter for ID.`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function transferToDentist() {
+  const id = document.getElementById('transfer-id').value;
+  const addr = document.getElementById('transfer-dentist').value.trim();
+  if (!id || !addr) { log('Fill in all fields.', 'error'); return; }
+  try {
+    log(`transferToDentist(${id}, ${addr}) — pending...`, 'pending');
+    const tx = await contract.transferToDentist(id, addr);
+    log(`Tx sent: ${tx.hash}`, 'info');
+    await tx.wait();
+    log(`Implant #${id} transferred to ${addr}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function assignToPatient() {
+  const id = document.getElementById('assign-id').value;
+  const addr = document.getElementById('assign-patient').value.trim();
+  if (!id || !addr) { log('Fill in all fields.', 'error'); return; }
+  try {
+    log(`assignToPatient(${id}, ${addr}) — pending...`, 'pending');
+    const tx = await contract.assignToPatient(id, addr);
+    log(`Tx sent: ${tx.hash}`, 'info');
+    await tx.wait();
+    log(`Implant #${id} assigned to patient ${addr}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function getSpecs() {
+  const id = document.getElementById('specs-id').value;
+  if (!id) { log('Enter implant ID.', 'error'); return; }
+  try {
+    const [specs, owner, used, patient] = await contract.getImplantSpecs(id);
+    document.getElementById('r-specs').textContent = specs;
+    document.getElementById('r-owner').textContent = owner;
+    document.getElementById('r-used').textContent = used ? 'YES' : 'NO';
+    document.getElementById('r-patient').textContent = patient === '0x0000000000000000000000000000000000000000' ? 'None' : patient;
+    document.getElementById('specs-result').classList.add('visible');
+    log(`Specs fetched for implant #${id}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function getHistory() {
+  const id = document.getElementById('hist-id').value;
+  if (!id) { log('Enter implant ID.', 'error'); return; }
+  try {
+    const records = await contract.getImplantHistory(id);
+    const tbody = document.getElementById('history-body');
+    tbody.innerHTML = '';
+    records.forEach((r, i) => {
+      const action = r.action;
+      const badgeClass = action.toLowerCase().includes('register') ? 'registered'
+        : action.toLowerCase().includes('transfer') ? 'transferred' : 'assigned';
+      const date = new Date(Number(r.timestamp) * 1000).toLocaleString();
+      tbody.innerHTML += `<tr>
+        <td>${i + 1}</td>
+        <td><span class="badge ${badgeClass}">${action}</span></td>
+        <td>${r.owner.slice(0,10)}...${r.owner.slice(-6)}</td>
+        <td>${date}</td>
+      </tr>`;
+    });
+    document.getElementById('history-table').classList.add('visible');
+    log(`History fetched for implant #${id} (${records.length} records)`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+
+async function getCounter() {
+  try {
+    const count = await contract.implantCounter();
+    document.getElementById('r-counter').textContent = count.toString();
+    document.getElementById('counter-result').classList.add('visible');
+    log(`Implant counter: ${count}`, 'success');
+  } catch(e) { log(e.reason || e.message, 'error'); }
+}
+</script>
+</body>
+</html>
